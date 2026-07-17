@@ -709,26 +709,7 @@ function loadHash() {
 /* ── Examples ───────────────────────────────────────────────── */
 function loadExample(key) {
   const examples = {
-    g1ex1: {
-      sentences: [
-        { text: 'Smith is a flexible negotiator but Robinson will not meet the demands.', refFormula: 'p∧¬r', refAtoms: [
-          { letter: 'p', clause: 'Smith is a flexible negotiator' },
-          { letter: 'q', clause: 'Smith will agree terms' },
-          { letter: 'r', clause: 'Robinson will meet the demands' }
-        ]}
-      ],
-      wsAtoms: [{ letter: '', clause: '' }],
-    },
-    g2ex5: {
-      sentences: [
-        { text: 'The car will start only if you turn the ignition key.', refFormula: 'r→q', refAtoms: [
-          { letter: 'p', clause: 'The tank is full' },
-          { letter: 'q', clause: 'You turn the ignition key' },
-          { letter: 'r', clause: 'The car will start' }
-        ]}
-      ],
-      wsAtoms: [{ letter: '', clause: '' }],
-    },
+
     burglar: {
       sentences: [
         { text: 'If the alarm goes off, the burglar entered through the window or the front door.', refFormula: 'p→(q∨r)', refAtoms: [
