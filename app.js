@@ -37,8 +37,11 @@ function safeApplyAscii(el) {
 
 function tryParse(formula) {
   if (!formula.trim()) return null;
-  try { return parse(formula); }
-  catch (e) { return null; }
+  // Try as-is first
+  try { return parse(formula); } catch (e1) {
+    // If it failed, try wrapping in parens (handles bare top-level binary like p→q)
+    try { return parse('(' + formula + ')'); } catch (e2) { return null; }
+  }
 }
 
 /* ── Symbol insertion ─────────────────────────────────────────── */
@@ -218,7 +221,7 @@ function renderSentenceList() {
 
 function addSentenceSlot() {
   sentences.push({ text: '', refFormula: '', refAtoms: [] });
-  wsAtoms.push([{ letter: '', clause: '' }]);
+  // wsAtoms is flat/shared — no need to add a slot per sentence
   renderSentenceList();
   rebuildWorksheet();
   rebuildTranslation();
@@ -230,10 +233,8 @@ function addSentenceSlot() {
 function removeSentence(idx) {
   if (sentences.length <= 1) {
     sentences[0] = { text: '', refFormula: '', refAtoms: [] };
-    wsAtoms[0] = [{ letter: '', clause: '' }];
   } else {
     sentences.splice(idx, 1);
-    wsAtoms.splice(idx, 1);
   }
   renderSentenceList();
   rebuildWorksheet();
@@ -242,134 +243,163 @@ function removeSentence(idx) {
 }
 
 /* ── Worksheet ──────────────────────────────────────────────── */
+// wsAtoms is now a flat array [{letter, clause}] — a single shared key
 function rebuildWorksheet() {
   const body = document.getElementById('worksheet-body');
   body.innerHTML = '';
 
-  const hasSentences = sentences.some(s => s.text.trim());
-  if (!hasSentences) {
+  const activeSentences = sentences.filter(s => s.text.trim());
+  if (!activeSentences.length) {
     body.innerHTML = '<p class="ws-placeholder">Enter sentences above to begin.</p>';
     return;
   }
 
-  // Ensure wsAtoms matches sentences length
-  while (wsAtoms.length < sentences.length) wsAtoms.push([{ letter: '', clause: '' }]);
-  wsAtoms.length = sentences.length;
+  // Ensure wsAtoms is a flat array
+  if (!Array.isArray(wsAtoms) || (wsAtoms.length > 0 && Array.isArray(wsAtoms[0]))) {
+    // migrate from old per-sentence format
+    const flat = [];
+    wsAtoms.forEach(arr => { if (Array.isArray(arr)) arr.forEach(a => flat.push(a)); else flat.push(arr); });
+    wsAtoms = flat.length ? flat : [{ letter: '', clause: '' }];
+  }
+  if (!wsAtoms.length) wsAtoms = [{ letter: '', clause: '' }];
 
-  sentences.forEach((s, i) => {
-    if (!s.text.trim()) return;
+  // Block of all sentences (read-only)
+  const sentBlock = document.createElement('div');
+  sentBlock.className = 'ws-sentence-block';
+  const sentTitle = document.createElement('div');
+  sentTitle.className = 'ws-sentence-label';
+  sentTitle.textContent = activeSentences.length === 1 ? 'Sentence' : 'Sentences';
+  sentBlock.appendChild(sentTitle);
 
-    const block = document.createElement('div');
-    block.className = 'ws-sentence-block';
-
-    const lbl = document.createElement('div');
-    lbl.className = 'ws-sentence-label';
-    lbl.textContent = 'Sentence ' + (i + 1);
-
+  activeSentences.forEach((s, i) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.gap = 'var(--space-3)';
+    wrapper.style.alignItems = 'baseline';
+    wrapper.style.marginBottom = 'var(--space-2)';
+    if (activeSentences.length > 1) {
+      const num = document.createElement('span');
+      num.style.cssText = 'font-style:italic;color:var(--color-text-muted);font-size:var(--text-sm);min-width:1rem;font-family:var(--font-body)';
+      num.textContent = i + 1;
+      wrapper.appendChild(num);
+    }
     const txt = document.createElement('div');
     txt.className = 'ws-sentence-text';
+    txt.style.marginBottom = '0';
     txt.textContent = s.text;
+    wrapper.appendChild(txt);
+    sentBlock.appendChild(wrapper);
+  });
+  body.appendChild(sentBlock);
 
-    const atomsDiv = document.createElement('div');
-    atomsDiv.className = 'ws-atoms';
+  // Divider
+  const divider = document.createElement('hr');
+  divider.style.cssText = 'border:none;border-top:1px solid var(--color-border);margin:var(--space-4) 0';
+  body.appendChild(divider);
 
-    function buildAtomRows() {
-      atomsDiv.innerHTML = '';
-      wsAtoms[i].forEach((atom, ai) => {
-        const row = document.createElement('div');
-        row.className = 'ws-atom-row';
+  // Shared atom assignment section
+  const keyTitle = document.createElement('div');
+  keyTitle.className = 'ws-sentence-label';
+  keyTitle.textContent = 'Assign a letter to each atomic sentence';
+  body.appendChild(keyTitle);
 
-        const letterInp = document.createElement('input');
-        letterInp.className = 'ws-letter-input';
-        letterInp.type = 'text';
-        letterInp.maxLength = 3;
-        letterInp.placeholder = 'p';
-        letterInp.value = atom.letter || '';
-        letterInp.addEventListener('input', () => {
-          wsAtoms[i][ai].letter = letterInp.value.trim();
-          updateKeyLegend();
-          pushHash();
-        });
+  const atomsDiv = document.createElement('div');
+  atomsDiv.className = 'ws-atoms';
+  atomsDiv.id = 'ws-atoms-container';
+  body.appendChild(atomsDiv);
 
-        const clauseInp = document.createElement('input');
-        clauseInp.className = 'ws-clause-input';
-        clauseInp.type = 'text';
-        clauseInp.placeholder = 'Atomic English clause…';
-        clauseInp.value = atom.clause || '';
-        clauseInp.addEventListener('input', () => {
-          wsAtoms[i][ai].clause = clauseInp.value;
-          updateKeyLegend();
-          pushHash();
-        });
+  function buildAtomRows() {
+    atomsDiv.innerHTML = '';
+    wsAtoms.forEach((atom, ai) => {
+      const row = document.createElement('div');
+      row.className = 'ws-atom-row';
 
-        const rmBtn = document.createElement('button');
-        rmBtn.className = 'ws-remove-atom-btn';
-        rmBtn.innerHTML = '&#x2715;';
-        rmBtn.addEventListener('click', () => {
-          if (wsAtoms[i].length > 1) {
-            wsAtoms[i].splice(ai, 1);
-          } else {
-            wsAtoms[i][0] = { letter: '', clause: '' };
-          }
-          buildAtomRows();
-          updateKeyLegend();
-          pushHash();
-        });
-
-        row.append(letterInp, clauseInp, rmBtn);
-        atomsDiv.appendChild(row);
-      });
-
-      const addBtn = document.createElement('button');
-      addBtn.className = 'ws-add-atom-btn';
-      addBtn.textContent = '+ Add atom';
-      addBtn.addEventListener('click', () => {
-        wsAtoms[i].push({ letter: '', clause: '' });
-        buildAtomRows();
-        updateKeyLegend();
+      const letterInp = document.createElement('input');
+      letterInp.className = 'ws-letter-input';
+      letterInp.type = 'text';
+      letterInp.maxLength = 3;
+      letterInp.placeholder = 'p';
+      letterInp.value = atom.letter || '';
+      letterInp.addEventListener('input', () => {
+        wsAtoms[ai].letter = letterInp.value.trim();
+        renderKeyLegend();
         pushHash();
       });
-      atomsDiv.appendChild(addBtn);
-    }
 
-    buildAtomRows();
-    block.append(lbl, txt, atomsDiv);
-    body.appendChild(block);
-  });
+      const clauseInp = document.createElement('input');
+      clauseInp.className = 'ws-clause-input';
+      clauseInp.type = 'text';
+      clauseInp.placeholder = 'Atomic English clause…';
+      clauseInp.value = atom.clause || '';
+      clauseInp.addEventListener('input', () => {
+        wsAtoms[ai].clause = clauseInp.value;
+        renderKeyLegend();
+        pushHash();
+      });
+
+      const rmBtn = document.createElement('button');
+      rmBtn.className = 'ws-remove-atom-btn';
+      rmBtn.innerHTML = '&#x2715;';
+      rmBtn.addEventListener('click', () => {
+        if (wsAtoms.length > 1) {
+          wsAtoms.splice(ai, 1);
+        } else {
+          wsAtoms[0] = { letter: '', clause: '' };
+        }
+        buildAtomRows();
+        renderKeyLegend();
+        pushHash();
+      });
+
+      row.append(letterInp, clauseInp, rmBtn);
+      atomsDiv.appendChild(row);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'ws-add-atom-btn';
+    addBtn.textContent = '+ Add atom';
+    addBtn.addEventListener('click', () => {
+      wsAtoms.push({ letter: '', clause: '' });
+      buildAtomRows();
+      renderKeyLegend();
+      pushHash();
+    });
+    atomsDiv.appendChild(addBtn);
+  }
+
+  buildAtomRows();
 
   // Running key legend
   const legend = document.createElement('div');
   legend.className = 'ws-key-legend';
-  legend.id = 'key-legend-' + Date.now(); // unique id, update via updateKeyLegend
+  legend.style.marginTop = 'var(--space-5)';
   legend.innerHTML = '<div class="ws-key-legend-title">Your key</div><div id="key-legend-rows"></div>';
   body.appendChild(legend);
-  updateKeyLegend();
+  renderKeyLegend();
 }
 
-function updateKeyLegend() {
+function renderKeyLegend() {
   const rowsEl = document.getElementById('key-legend-rows');
   if (!rowsEl) return;
   rowsEl.innerHTML = '';
 
   const seen = new Set();
   let any = false;
-  wsAtoms.forEach(atoms => {
-    atoms.forEach(a => {
-      if (a.letter && a.clause && !seen.has(a.letter)) {
-        seen.add(a.letter);
-        const row = document.createElement('div');
-        row.className = 'ws-key-row';
-        const lt = document.createElement('span');
-        lt.className = 'ws-key-letter';
-        lt.textContent = a.letter;
-        const cl = document.createElement('span');
-        cl.className = 'ws-key-clause';
-        cl.textContent = '— ' + a.clause;
-        row.append(lt, cl);
-        rowsEl.appendChild(row);
-        any = true;
-      }
-    });
+  (Array.isArray(wsAtoms[0]) ? wsAtoms.flat() : wsAtoms).forEach(a => {
+    if (a.letter && a.clause && !seen.has(a.letter)) {
+      seen.add(a.letter);
+      const row = document.createElement('div');
+      row.className = 'ws-key-row';
+      const lt = document.createElement('span');
+      lt.className = 'ws-key-letter';
+      lt.textContent = a.letter;
+      const cl = document.createElement('span');
+      cl.className = 'ws-key-clause';
+      cl.textContent = '— ' + a.clause;
+      row.append(lt, cl);
+      rowsEl.appendChild(row);
+      any = true;
+    }
   });
 
   if (!any) {
@@ -377,8 +407,11 @@ function updateKeyLegend() {
   }
 }
 
+// keep old name as alias so any stray calls still work
+function updateKeyLegend() { renderKeyLegend(); }
+
 function resetWorksheet() {
-  wsAtoms = sentences.map(() => [{ letter: '', clause: '' }]);
+  wsAtoms = [{ letter: '', clause: '' }];
   rebuildWorksheet();
   pushHash();
 }
@@ -603,7 +636,12 @@ function loadHash() {
       }));
     }
     if (data.wsAtoms && Array.isArray(data.wsAtoms)) {
-      wsAtoms = data.wsAtoms;
+      // migrate old per-sentence nested format to flat
+      if (data.wsAtoms.length > 0 && Array.isArray(data.wsAtoms[0])) {
+        wsAtoms = data.wsAtoms.flat();
+      } else {
+        wsAtoms = data.wsAtoms;
+      }
     }
     if (data.trans && Array.isArray(data.trans)) {
       transState = data.trans.map(t => ({ formula: t.formula || '', checked: false, revealed: false }));
@@ -622,7 +660,7 @@ function loadExample(key) {
           { letter: 'q', clause: 'The ground is wet' }
         ]}
       ],
-      wsAtoms: [[{ letter: '', clause: '' }]],
+      wsAtoms: [{ letter: '', clause: '' }],
     },
     burglar: {
       sentences: [
@@ -634,11 +672,7 @@ function loadExample(key) {
         { text: 'The alarm did not go off.', refFormula: '¬p', refAtoms: [] },
         { text: 'Therefore, the burglar did not enter through the window and did not enter through the front door.', refFormula: '¬q∧¬r', refAtoms: [] }
       ],
-      wsAtoms: [
-        [{ letter: '', clause: '' }],
-        [{ letter: '', clause: '' }],
-        [{ letter: '', clause: '' }]
-      ],
+      wsAtoms: [{ letter: '', clause: '' }],
     },
     zebra: {
       sentences: [
@@ -649,18 +683,14 @@ function loadExample(key) {
         { text: 'I cannot rule out that the animal in the pen is a cleverly painted mule.', refFormula: '¬q', refAtoms: [] },
         { text: 'Therefore, I cannot be certain that the animal in the pen is a zebra.', refFormula: '¬p', refAtoms: [] }
       ],
-      wsAtoms: [
-        [{ letter: '', clause: '' }],
-        [{ letter: '', clause: '' }],
-        [{ letter: '', clause: '' }]
-      ],
+      wsAtoms: [{ letter: '', clause: '' }],
     }
   };
 
   const ex = examples[key];
   if (!ex) return;
   sentences = ex.sentences.map(s => ({ ...s }));
-  wsAtoms = ex.wsAtoms.map(a => a.map(r => ({ ...r })));
+  wsAtoms = ex.wsAtoms.map(a => ({ ...a }));
   transState = sentences.map(() => ({ formula: '', checked: false, revealed: false }));
   renderSentenceList();
   rebuildWorksheet();
@@ -692,7 +722,7 @@ function init() {
   const loaded = loadHash();
   if (!loaded) {
     sentences = [{ text: '', refFormula: '', refAtoms: [] }];
-    wsAtoms   = [[{ letter: '', clause: '' }]];
+    wsAtoms   = [{ letter: '', clause: '' }];
     transState = [{ formula: '', checked: false, revealed: false }];
   }
   renderSentenceList();
