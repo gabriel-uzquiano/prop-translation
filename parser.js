@@ -2,7 +2,7 @@
  * Propositional Logic Parser
  *
  * Vocabulary (following PHIL 220g exactly):
- *   Sentence letters: p, q, r, s, t  (with optional numeric subscripts: p1, q2, …)
+ *   Sentence letters: any lowercase letter a–z (with optional numeric subscripts: p1, q2, …)
  *   Connectives:      ¬  ∧  ∨  →
  *   Parentheses:      (  )
  *
@@ -78,8 +78,8 @@ function tokenise(raw) {
     if (ch === '(') { tokens.push({ type: T.LPAREN }); i++; continue; }
     if (ch === ')') { tokens.push({ type: T.RPAREN }); i++; continue; }
 
-    // Sentence letters: p, q, r, s, t with optional numeric subscript
-    if (/[pqrst]/.test(ch)) {
+    // Sentence letters: any lowercase letter, with optional numeric subscript
+    if (/[a-z]/.test(ch)) {
       let sub = '';
       i++;
       while (i < s.length && /[0-9]/.test(s[i])) { sub += s[i]; i++; }
@@ -87,24 +87,17 @@ function tokenise(raw) {
       continue;
     }
 
-    // Uppercase letters or other lowercase — not in vocabulary
-    if (/[A-Za-z]/.test(ch)) {
+    // Uppercase letters — not in vocabulary
+    if (/[A-Z]/.test(ch)) {
       let word = ch; i++;
       while (i < s.length && /[A-Za-z0-9]/.test(s[i])) { word += s[i]; i++; }
-      if (/^[pqrst]/.test(word)) {
-        tokens.push({ type: T.LETTER, name: word[0], sub: null });
-        i -= word.length - 1;
-      } else {
-        throw new ParseError(
-          `'${word}' is not a symbol of propositional logic. ` +
-          `Sentence letters are p, q, r, s, t (with optional numeric subscripts).`
-        );
-      }
-      continue;
+      throw new ParseError(
+        `'${word}' is not a sentence letter. Sentence letters must be lowercase (e.g. p, q, r).`
+      );
     }
 
     throw new ParseError(
-      `Unexpected character '${ch}'. Only sentence letters (p, q, r, s, t), connectives (¬ ∧ ∨ →), and parentheses are allowed.`
+      `Unexpected character '${ch}'. Only lowercase sentence letters, connectives (¬ ∧ ∨ →), and parentheses are allowed.`
     );
   }
   tokens.push({ type: T.EOF });

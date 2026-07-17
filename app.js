@@ -546,18 +546,55 @@ function rebuildTranslation() {
         return;
       }
 
-      const result = checkEquivalence(studentAst, refAst);
+      // Build clause→refLetter map from the reference key
+      const refKey = s.refAtoms || [];  // [{letter, clause}]
+      const clauseToRef = {};
+      refKey.forEach(a => { if (a.letter && a.clause) clauseToRef[a.clause.trim().toLowerCase()] = a.letter; });
+
+      // Build studentLetter→refLetter substitution from the worksheet key
+      const studentKey = Array.isArray(wsAtoms[0]) ? wsAtoms.flat() : wsAtoms;
+      const subst = {};   // studentLetter → refLetter
+      const unmapped = []; // student letters with no matching clause in ref key
+      studentKey.forEach(a => {
+        if (!a.letter) return;
+        const refLetter = clauseToRef[a.clause.trim().toLowerCase()];
+        if (refLetter) {
+          subst[a.letter] = refLetter;
+        } else if (a.clause.trim()) {
+          unmapped.push({ letter: a.letter, clause: a.clause });
+        }
+      });
+
+      // Warn if student used letters whose clauses don’t appear in the reference key
+      if (unmapped.length > 0) {
+        const listed = unmapped.map(u => `‘${u.letter}’ (${u.clause})`).join(', ');
+        feedbackEl.className = 'trans-feedback wrong';
+        feedbackEl.innerHTML = `⚠ The atomic sentence${unmapped.length > 1 ? 's' : ''} assigned to ${listed} ` +
+          `do${unmapped.length > 1 ? '' : 'es'} not appear in the reference key. ` +
+          `Check that your key matches the intended atoms.`;
+        return;
+      }
+
+      // Apply substitution to the student’s AST (rename letters)
+      const renamedAst = renameLetters(studentAst, subst);
+
+      // Check equivalence between renamed student formula and reference
+      const result = checkEquivalence(renamedAst, refAst);
       if (result.equivalent) {
         feedbackEl.className = 'trans-feedback correct';
-        feedbackEl.innerHTML = '✓ Correct — your formula is logically equivalent to the reference.';
+        feedbackEl.innerHTML = '✓ Correct — your translation is equivalent to the reference.';
       } else {
         feedbackEl.className = 'trans-feedback wrong';
+        // Translate the counterexample back into English using the ref key
         const ce = result.counterexample;
-        const assign = Object.entries(ce.assignment).map(([k,v]) => k + '=' + (v?'T':'F')).join(', ');
+        const assign = Object.entries(ce.assignment).map(([letter, v]) => {
+          const atom = refKey.find(a => a.letter === letter);
+          const label = atom ? atom.clause : letter;
+          return `‘${label}’ is ${v ? 'true' : 'false'}`;
+        }).join(', ');
         feedbackEl.innerHTML =
-          '✗ Not quite — when ' + assign +
-          ', your formula is <strong>' + (ce.student ? 'T' : 'F') + '</strong>' +
-          ' but the reference is <strong>' + (ce.reference ? 'T' : 'F') + '</strong>.';
+          `✗ Not quite — consider the case where ${assign}. ` +
+          `Your formula gives the wrong truth value there.`;
       }
       ts.checked = true;
       pushHash();
@@ -586,6 +623,19 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* -- Letter renaming (for key-mapped equivalence check) ------- */
+function renameLetters(node, subst) {
+  if (!node) return node;
+  if (node.type === 'letter') {
+    const mapped = subst[node.name];
+    return { type: 'letter', name: mapped !== undefined ? mapped : node.name, sub: node.sub };
+  }
+  if (node.type === 'neg') return { type: 'neg', arg: renameLetters(node.arg, subst) };
+  if (node.left !== undefined) {
+    return { ...node, left: renameLetters(node.left, subst), right: renameLetters(node.right, subst) };
+  }
+  return node;
+}
 /* ── Equivalence check ──────────────────────────────────────── */
 function checkEquivalence(ast1, ast2) {
   // Collect all propositional letters from both trees
