@@ -1,5 +1,10 @@
 'use strict';
 
+/* ── Instructor mode ─────────────────────────────────────────── */
+// Append ?key=show to the URL to enter instructor mode.
+// Students use the plain URL — the answer-key toggle is hidden for them.
+const INSTRUCTOR_MODE = new URLSearchParams(location.search).get('key') === 'show';
+
 /* ── State ───────────────────────────────────────────────────── */
 let sentences   = [];   // [{ text, refFormula, refAtoms: [{letter, clause}] }]
 let keyMode     = false; // show reference fields
@@ -62,6 +67,7 @@ function trackFocus(el, area) {
 
 /* ── Key mode ─────────────────────────────────────────────────── */
 function toggleKeyMode() {
+  if (!INSTRUCTOR_MODE) return; // guard: only instructors can toggle
   keyMode = !keyMode;
   document.getElementById('toggle-key-btn').textContent =
     keyMode ? 'Hide answer key' : 'Show answer key';
@@ -717,7 +723,24 @@ function toggleHelp(e) {
   }
 }
 
-/* ── Init ───────────────────────────────────────────────────── */
+/* ── Copy link ───────────────────────────────────────────────── */
+function copyLink() {
+  pushHash();
+  // Build student URL (no ?key=show)
+  const studentUrl = location.origin + location.pathname + location.hash;
+  navigator.clipboard.writeText(studentUrl).then(() => {
+    const btn = document.getElementById('copy-link-btn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy link'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    const inp = document.createElement('input');
+    inp.value = studentUrl;
+    document.body.appendChild(inp); inp.select(); document.execCommand('copy'); document.body.removeChild(inp);
+  });
+}
+
+/* ── Init ─────────────────────────────────────────────────────────── */
 function init() {
   const loaded = loadHash();
   if (!loaded) {
@@ -725,6 +748,15 @@ function init() {
     wsAtoms   = [{ letter: '', clause: '' }];
     transState = [{ formula: '', checked: false, revealed: false }];
   }
+
+  // Show/hide the answer-key toggle depending on instructor mode
+  const keyBtn = document.getElementById('toggle-key-btn');
+  const keyToolbar = document.getElementById('key-toolbar');
+  if (!INSTRUCTOR_MODE) {
+    keyBtn.style.display = 'none';
+    keyToolbar.style.display = 'none';
+  }
+
   renderSentenceList();
   rebuildWorksheet();
   rebuildTranslation();
