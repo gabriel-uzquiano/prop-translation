@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Translator — Propositional Logic</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="logo-text">Translator</span>
+        <span class="logo-subtitle">Propositional Logic</span>
+      </div>
+      <div class="header-controls">
+        <a href="#" class="help-link" onclick="toggleHelp(event)">Help</a>
+        <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">☽</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Help panel ────────────────────────────────────────────── -->
+  <div class="help-panel" id="help-panel" hidden>
+    <div class="help-inner">
+      <div class="help-col">
+        <h3 class="help-heading">How to use</h3>
+        <p><strong>Sentences</strong> — enter one or more English sentences to translate. Use <em>Add sentence</em> for multiple sentences. Toggle <em>Show answer key</em> to enter the reference translation and intended key (hidden from students).</p>
+        <p><strong>Worksheet</strong> — identify the atomic clauses in each sentence and assign a propositional letter to each. Build your own key row by row. Hit <em>Reset</em> to start over.</p>
+        <p><strong>Translation</strong> — type the symbolic translation of each sentence using your key. Hit <em>Check</em> to see if it is logically equivalent to the reference. Hit <em>Reveal</em> to see the reference answer.</p>
+      </div>
+      <div class="help-col">
+        <h3 class="help-heading">ASCII shortcuts</h3>
+        <table class="help-table">
+          <thead><tr><th>Symbol</th><th>ASCII</th><th>Unicode</th></tr></thead>
+          <tbody>
+            <tr><td>Negation</td><td>~ or -</td><td>¬</td></tr>
+            <tr><td>Conjunction</td><td>&amp; or /\</td><td>∧</td></tr>
+            <tr><td>Disjunction</td><td>| or \/</td><td>∨</td></tr>
+            <tr><td>Conditional</td><td>-&gt; or =&gt;</td><td>→</td></tr>
+            <tr><td>Biconditional</td><td>&lt;-&gt;</td><td>↔</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <button class="close-help" onclick="toggleHelp(event)">Close</button>
+  </div>
+
+  <!-- ── Main ──────────────────────────────────────────────────── -->
+  <main class="main-wrap">
+
+    <!-- Card 1: Sentences -->
+    <section class="card" id="sentences-section">
+      <div class="card-header">
+        <h2 class="section-title">Sentences</h2>
+        <button class="btn-ghost btn-sm" id="toggle-key-btn" onclick="toggleKeyMode()">Show answer key</button>
+      </div>
+      <div class="card-hint" id="sentences-hint">Enter one or more English sentences to translate.</div>
+
+      <!-- Symbol toolbar (for reference fields) -->
+      <div class="sym-toolbar" id="key-toolbar" style="display:none">
+        <button class="sym-btn" onclick="insertSym('¬','key')" title="Negation">¬</button>
+        <button class="sym-btn" onclick="insertSym('∧','key')" title="Conjunction">∧</button>
+        <button class="sym-btn" onclick="insertSym('∨','key')" title="Disjunction">∨</button>
+        <button class="sym-btn" onclick="insertSym('→','key')" title="Conditional">→</button>
+        <button class="sym-btn" onclick="insertSym('↔','key')" title="Biconditional">↔</button>
+        <button class="sym-btn" onclick="insertSym('(','key')">(</button>
+        <button class="sym-btn" onclick="insertSym(')','key')">)</button>
+      </div>
+
+      <div id="sentence-list"></div>
+
+      <div class="card-footer">
+        <button class="btn-outline btn-sm" onclick="addSentenceSlot()">+ Add sentence</button>
+      </div>
+
+      <div class="examples-row">
+        <span class="examples-label">Examples</span>
+        <button class="example-chip" onclick="loadExample('burglar')">The Burglar Argument</button>
+        <button class="example-chip" onclick="loadExample('zebra')">The Zebra Argument</button>
+        <button class="example-chip" onclick="loadExample('simple')">Simple conditional</button>
+      </div>
+    </section>
+
+    <!-- Card 2: Worksheet -->
+    <section class="card" id="worksheet-section">
+      <div class="card-header">
+        <h2 class="section-title">Worksheet</h2>
+        <button class="btn-ghost btn-sm" onclick="resetWorksheet()">Reset</button>
+      </div>
+      <div class="card-hint">Identify the atomic sentences and assign a propositional letter to each.</div>
+
+      <div id="worksheet-body">
+        <p class="ws-placeholder">Enter sentences above to begin.</p>
+      </div>
+    </section>
+
+    <!-- Card 3: Translation -->
+    <section class="card" id="translation-section">
+      <div class="card-header">
+        <h2 class="section-title">Translation</h2>
+      </div>
+      <div class="card-hint">Translate each sentence using your key. Check your answer or reveal the reference.</div>
+
+      <!-- Symbol toolbar -->
+      <div class="sym-toolbar">
+        <button class="sym-btn" onclick="insertSym('¬','trans')" title="Negation">¬</button>
+        <button class="sym-btn" onclick="insertSym('∧','trans')" title="Conjunction">∧</button>
+        <button class="sym-btn" onclick="insertSym('∨','trans')" title="Disjunction">∨</button>
+        <button class="sym-btn" onclick="insertSym('→','trans')" title="Conditional">→</button>
+        <button class="sym-btn" onclick="insertSym('↔','trans')" title="Biconditional">↔</button>
+        <button class="sym-btn" onclick="insertSym('(','trans')">(</button>
+        <button class="sym-btn" onclick="insertSym(')','trans')">)</button>
+      </div>
+
+      <div id="translation-body">
+        <p class="ws-placeholder">Enter sentences above to begin.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="parser.js"></script>
+  <script src="evaluator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
