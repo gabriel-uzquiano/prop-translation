@@ -662,7 +662,25 @@ function checkEquivalence(ast1, ast2) {
 }
 
 /* ── Hash encode/decode ─────────────────────────────────────── */
+function updateNewProblemBtn() {
+  const btn = document.getElementById('new-problem-btn');
+  if (btn) btn.hidden = !sentences.some(s => s.text.trim());
+}
+
+function newProblem() {
+  sentences  = [{ text: '', refFormula: '', refAtoms: [] }];
+  wsAtoms    = [{ letter: '', clause: '' }];
+  transState = [{ formula: '', checked: false, revealed: false }];
+  history.replaceState(null, '', location.pathname);
+  renderSentenceList();
+  rebuildWorksheet();
+  rebuildTranslation();
+  updateNewProblemBtn();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function pushHash() {
+  updateNewProblemBtn();
   try {
     const data = {
       sentences: sentences.map(s => ({
@@ -802,6 +820,7 @@ function init() {
   renderSentenceList();
   rebuildWorksheet();
   rebuildTranslation();
+  updateNewProblemBtn();
 }
 
 setTimeout(init, 0);
