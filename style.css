@@ -145,6 +145,7 @@ body {
   box-shadow: var(--card-shadow);
   padding: var(--space-6);
 }
+.card-header-actions { display: flex; align-items: center; gap: var(--space-3); }
 .card-header {
   display: flex; align-items: baseline; justify-content: space-between;
   margin-bottom: var(--space-4);
