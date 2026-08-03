@@ -824,3 +824,37 @@ function init() {
 }
 
 setTimeout(init, 0);
+
+/* ── Card mode: ?card=sentences,worksheet,translation ─────────────── */
+// Hide all sections except those listed in ?card=
+// Also hides header, help panel, and add-sentence button for compact display.
+(function applyCardMode() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('card')) return;
+
+  const requested = new Set(
+    params.get('card').split(',').map(s => s.trim().toLowerCase())
+  );
+
+  const cardMap = {
+    sentences:   document.getElementById('sentences-section'),
+    worksheet:   document.getElementById('worksheet-section'),
+    translation: document.getElementById('translation-section'),
+  };
+
+  // Hide chrome
+  const header    = document.querySelector('.app-header');
+  const helpPanel = document.getElementById('help-panel');
+  const examples  = document.querySelector('.examples-bar');
+  if (header)    header.hidden    = true;
+  if (helpPanel) helpPanel.hidden = true;
+  if (examples)  examples.hidden  = true;
+
+  // Show only requested cards
+  Object.entries(cardMap).forEach(([name, el]) => {
+    if (!el) return;
+    el.hidden = !requested.has(name);
+  });
+
+  document.body.classList.add('card-mode');
+})();
