@@ -750,7 +750,37 @@ function loadExample(key) {
         { text: 'Therefore, I cannot be certain that the animal in the pen is a zebra.', refFormula: '¬p', refAtoms: [] }
       ],
       wsAtoms: [{ letter: '', clause: '' }],
-    }
+    },
+    smith: {
+      sentences: [
+        { text: 'Although Smith is not a flexible negotiator, she will come to an agreement if we lower our demands.', refFormula: '¬p∧(q→r)', refAtoms: [
+          { letter: 'p', clause: 'Smith is a flexible negotiator' },
+          { letter: 'q', clause: 'We lower our demands' },
+          { letter: 'r', clause: 'Smith will come to an agreement' }
+        ]}
+      ],
+      wsAtoms: [{ letter: '', clause: '' }],
+    },
+    lottery: {
+      sentences: [
+        { text: 'I will win the lottery only if I buy a ticket.', refFormula: 'p→q', refAtoms: [
+          { letter: 'p', clause: 'I will win the lottery' },
+          { letter: 'q', clause: 'I buy a ticket' }
+        ]}
+      ],
+      wsAtoms: [{ letter: '', clause: '' }],
+    },
+    cobalt: {
+      sentences: [
+        { text: 'If cobalt is present, then either there is no nickel present or there is manganese present and a brown color appears.', refFormula: 'p→(¬q∨(r∧s))', refAtoms: [
+          { letter: 'p', clause: 'Cobalt is present' },
+          { letter: 'q', clause: 'There is nickel present' },
+          { letter: 'r', clause: 'There is manganese present' },
+          { letter: 's', clause: 'A brown color appears' }
+        ]}
+      ],
+      wsAtoms: [{ letter: '', clause: '' }],
+    },
   };
 
   const ex = examples[key];
