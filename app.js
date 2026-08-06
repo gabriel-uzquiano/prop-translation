@@ -401,7 +401,7 @@ function renderKeyLegend() {
       lt.textContent = a.letter;
       const cl = document.createElement('span');
       cl.className = 'ws-key-clause';
-      cl.textContent = '— ' + a.clause;
+      cl.textContent = ': ' + a.clause;
       row.append(lt, cl);
       rowsEl.appendChild(row);
       any = true;
