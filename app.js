@@ -607,8 +607,33 @@ function rebuildTranslation() {
         feedbackEl.textContent = 'No reference answer has been set for this sentence.';
         return;
       }
+
+      // Re-express the reference formula using the student's own letters
+      // whenever their key fully covers it, so the reveal matches what the
+      // student typed instead of the instructor's fixed key.
+      let displayVal = refVal;
+      const refAst = tryParse(refVal);
+      if (refAst) {
+        const refKey = s.refAtoms || [];
+        const studentKey = Array.isArray(wsAtoms[0]) ? wsAtoms.flat() : wsAtoms;
+        const usedRefLetters = collectLetters(refAst);
+        const refToStudent = {};
+        const fullyMapped = usedRefLetters.every(rl => {
+          const refAtom = refKey.find(a => a.letter === rl);
+          if (!refAtom || !refAtom.clause) return false;
+          const match = studentKey.find(a => a.letter && a.clause &&
+            a.clause.trim().toLowerCase() === refAtom.clause.trim().toLowerCase());
+          if (!match) return false;
+          refToStudent[rl] = match.letter;
+          return true;
+        });
+        if (fullyMapped && usedRefLetters.length > 0) {
+          displayVal = prettyPrint(renameLetters(refAst, refToStudent));
+        }
+      }
+
       feedbackEl.className = 'trans-feedback revealed';
-      feedbackEl.innerHTML = 'Reference: <span class="feedback-formula">' + escHtml(refVal) + '</span>';
+      feedbackEl.innerHTML = 'Reference: <span class="feedback-formula">' + escHtml(displayVal) + '</span>';
       ts.revealed = true;
       pushHash();
     });
